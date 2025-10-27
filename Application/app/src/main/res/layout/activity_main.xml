@@ -7,13 +7,29 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    <LinearLayout
+        android:layout_width="383dp"
+        android:layout_height="148dp"
+        android:orientation="vertical"
+        tools:layout_editor_absoluteX="16dp"
+        tools:layout_editor_absoluteY="16dp">
 
+        <Button
+            android:id="@+id/ButtonCreate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Создать уведомление" />
+
+        <Button
+            android:id="@+id/ButtonDalete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Удалить уведомление" />
+
+        <Button
+            android:id="@+id/ButtonChange"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Изменить уведомление" />
+    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
