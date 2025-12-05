@@ -1,8 +1,9 @@
 package com.example.alarmpi;
 
+import java.io.Serializable;
 import java.util.Date;
 
-public class Reminder {
+public class Reminder implements Serializable {
     private String id;
     private String title;
     private String description;

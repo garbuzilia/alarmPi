@@ -1,16 +1,19 @@
 package com.example.alarmpi;
 
 import android.os.Bundle;
+import android.widget.Button;
+import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import android.widget.Button;
-import android.widget.Toast;
+
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Calendar;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements AddEditReminderDialog.OnReminderSavedListener {
 
     private RecyclerView recyclerView;
     private ReminderAdapter adapter;
@@ -22,41 +25,29 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // 1. Инициализируем список (пока пустой)
-        reminderList = new ArrayList<>();
-
-        // 2. Находим RecyclerView в макете
         recyclerView = findViewById(R.id.remindersRecyclerView);
-
-        // 3. Устанавливаем LayoutManager (отвечает за размещение элементов)
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        // 4. Создаем адаптер и передаем ему данные
+        reminderList = new ArrayList<>();
         adapter = new ReminderAdapter(reminderList, this);
-
-        // 5. Устанавливаем адаптер в RecyclerView
         recyclerView.setAdapter(adapter);
 
-        // 6. Находим кнопки
         deleteButton = findViewById(R.id.deleteButton);
         addButton = findViewById(R.id.addButton);
         editButton = findViewById(R.id.editButton);
 
-        // 7. Устанавливаем слушатель кликов для адаптера
+        deleteButton.setOnClickListener(v -> deleteSelectedReminder());
+        addButton.setOnClickListener(v -> showAddDialog());
+        editButton.setOnClickListener(v -> showEditDialog());
+
         adapter.setOnItemClickListener(new ReminderAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(int position) {
-                // Включаем кнопки удаления и редактирования
-                deleteButton.setEnabled(true);
-                editButton.setEnabled(true);
-                Toast.makeText(MainActivity.this,
-                        "Выбрано: " + reminderList.get(position).getTitle(),
-                        Toast.LENGTH_SHORT).show();
+                updateButtonStates(true);
             }
 
             @Override
             public void onSwitchChanged(int position, boolean isChecked) {
-                // Обновляем состояние напоминания
                 reminderList.get(position).setActive(isChecked);
                 String state = isChecked ? "включено" : "выключено";
                 Toast.makeText(MainActivity.this,
@@ -65,54 +56,84 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // 8. Обработчики для кнопок
-        deleteButton.setOnClickListener(v -> {
-            int selectedPosition = adapter.getSelectedPosition();
-            if (selectedPosition != -1) {
-                adapter.removeReminder(selectedPosition);
-                deleteButton.setEnabled(false);
-                editButton.setEnabled(false);
-            }
-        });
-
-        addButton.setOnClickListener(v -> {
-            // Создаем тестовое напоминание
-            Reminder newReminder = new Reminder(
-                    "Новое напоминание",
-                    "Описание нового напоминания",
-                    new Date()
-            );
-            adapter.addReminder(newReminder);
-        });
-
-        editButton.setOnClickListener(v -> {
-            int selectedPosition = adapter.getSelectedPosition();
-            if (selectedPosition != -1) {
-                // Здесь можно открыть диалог редактирования
-                Toast.makeText(this, "Редактировать позицию " + selectedPosition,
-                        Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        // 9. Добавляем тестовые данные
         addTestData();
+        updateButtonStates(false);
+    }
+
+    private void updateButtonStates(boolean hasSelection) {
+        deleteButton.setEnabled(hasSelection);
+        editButton.setEnabled(hasSelection);
+    }
+
+    private void deleteSelectedReminder() {
+        int position = adapter.getSelectedPosition();
+        if (position != -1) {
+            reminderList.remove(position);
+            adapter.notifyItemRemoved(position);
+            adapter.setSelectedPosition(-1);
+            updateButtonStates(false);
+            Toast.makeText(this, "Напоминание удалено", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showAddDialog() {
+        AddEditReminderDialog dialog = AddEditReminderDialog.newInstance();
+        dialog.show(getSupportFragmentManager(), "add_reminder_dialog");
+    }
+
+    private void showEditDialog() {
+        int position = adapter.getSelectedPosition();
+        if (position != -1) {
+            Reminder reminder = reminderList.get(position);
+            AddEditReminderDialog dialog = AddEditReminderDialog.newInstance(position, reminder);
+            dialog.show(getSupportFragmentManager(), "edit_reminder_dialog");
+        } else {
+            Toast.makeText(this, "Сначала выберите напоминание", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onReminderAdded(Reminder reminder) {
+        reminderList.add(reminder);
+        adapter.notifyItemInserted(reminderList.size() - 1);
+        Toast.makeText(this, "Напоминание добавлено", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onReminderUpdated(int position, Reminder reminder) {
+        if (position >= 0 && position < reminderList.size()) {
+            boolean wasActive = reminderList.get(position).isActive();
+            reminder.setActive(wasActive);
+
+            reminderList.set(position, reminder);
+            adapter.notifyItemChanged(position);
+            Toast.makeText(this, "Напоминание обновлено", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void addTestData() {
-        // Добавляем несколько тестовых напоминаний
+        Calendar cal1 = Calendar.getInstance();
+        cal1.add(Calendar.DAY_OF_YEAR, 1);
+        cal1.set(Calendar.HOUR_OF_DAY, 10);
+        cal1.set(Calendar.MINUTE, 30);
+
         reminderList.add(new Reminder(
                 "Вынести мусор",
                 "Скоро приедут родители, нужно сделать уборку",
-                new Date() // Здесь должна быть реальная дата
+                cal1.getTime()
         ));
+
+        Calendar cal2 = Calendar.getInstance();
+        cal2.add(Calendar.DAY_OF_YEAR, 2);
+        cal2.set(Calendar.HOUR_OF_DAY, 15);
+        cal2.set(Calendar.MINUTE, 0);
 
         reminderList.add(new Reminder(
                 "Погулять с собакой",
                 "Она очень хочет погулять",
-                new Date()
+                cal2.getTime()
         ));
 
-        // Уведомляем адаптер, что данные изменились
         adapter.notifyDataSetChanged();
     }
 }
