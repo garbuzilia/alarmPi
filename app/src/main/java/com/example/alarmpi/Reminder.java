@@ -10,7 +10,6 @@ public class Reminder implements Serializable {
     private Date dateTime;
     private boolean isActive;
 
-    // Конструктор
     public Reminder(String title, String description, Date dateTime) {
         this.id = String.valueOf(System.currentTimeMillis());
         this.title = title;
