@@ -5,6 +5,7 @@ import android.app.Dialog;
 import android.app.TimePickerDialog;
 import android.content.Context;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -25,6 +26,8 @@ import java.util.Date;
 import java.util.Locale;
 
 public class AddEditReminderDialog extends DialogFragment {
+
+    private static final String TAG = "ReminderDialog";
 
     public interface OnReminderSavedListener {
         void onReminderAdded(Reminder reminder);
@@ -58,142 +61,189 @@ public class AddEditReminderDialog extends DialogFragment {
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);
         try {
-            listener = (OnReminderSavedListener) getParentFragment();
+            listener = (OnReminderSavedListener) context;
+            Log.d(TAG, "Listener attached successfully");
         } catch (ClassCastException e) {
-            try {
-                listener = (OnReminderSavedListener) context;
-            } catch (ClassCastException e2) {
-                throw new ClassCastException(context.toString()
-                        + " must implement OnReminderSavedListener");
-            }
+            Log.e(TAG, "Activity must implement OnReminderSavedListener", e);
+            throw new ClassCastException(context.toString()
+                    + " must implement OnReminderSavedListener");
         }
     }
 
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        selectedCalendar = Calendar.getInstance();
+        try {
+            selectedCalendar = Calendar.getInstance();
 
-        if (getArguments() != null) {
-            editingPosition = getArguments().getInt(ARG_POSITION, -1);
-            existingReminder = (Reminder) getArguments().getSerializable(ARG_REMINDER);
-            if (existingReminder != null) {
-                selectedCalendar.setTime(existingReminder.getDateTime());
+            if (getArguments() != null) {
+                editingPosition = getArguments().getInt(ARG_POSITION, -1);
+                existingReminder = (Reminder) getArguments().getSerializable(ARG_REMINDER);
+                if (existingReminder != null && existingReminder.getDateTime() != null) {
+                    selectedCalendar.setTime(existingReminder.getDateTime());
+                    Log.d(TAG, "Editing existing reminder at position: " + editingPosition);
+                }
             }
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(requireActivity());
+            LayoutInflater inflater = requireActivity().getLayoutInflater();
+            View view = inflater.inflate(R.layout.dialog_add_edit_reminder, null);
+
+            // Инициализация элементов
+            initViews(view);
+
+            // Установка данных
+            populateData();
+
+            // Установка обработчиков
+            setClickListeners(view);
+
+            builder.setView(view);
+            return builder.create();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating dialog", e);
+            Toast.makeText(getContext(), "Ошибка создания диалога", Toast.LENGTH_SHORT).show();
+            return super.onCreateDialog(savedInstanceState);
         }
+    }
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireActivity());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View view = inflater.inflate(R.layout.dialog_add_edit_reminder, null);
-
-        // Находим все элементы с правильными id
-        TextView dialogTitleTextView = view.findViewById(R.id.dialogTitleTextView);
+    private void initViews(View view) {
         titleEditText = view.findViewById(R.id.titleEditText);
         descriptionEditText = view.findViewById(R.id.descriptionEditText);
         dateTextView = view.findViewById(R.id.dateTextView);
         timeTextView = view.findViewById(R.id.timeTextView);
+    }
+
+    private void populateData() {
+        // Установка текущей даты и времени по умолчанию
+        updateDateTimeDisplay();
+
+        // Если редактируем существующее напоминание
+        if (existingReminder != null) {
+            titleEditText.setText(existingReminder.getTitle());
+            descriptionEditText.setText(existingReminder.getDescription());
+            if (existingReminder.getDateTime() != null) {
+                selectedCalendar.setTime(existingReminder.getDateTime());
+                updateDateTimeDisplay();
+            }
+        }
+    }
+
+    private void setClickListeners(View view) {
         Button dateButton = view.findViewById(R.id.dateButton);
         Button timeButton = view.findViewById(R.id.timeButton);
         Button cancelButton = view.findViewById(R.id.cancelButton);
         Button saveButton = view.findViewById(R.id.saveButton);
 
-        // Устанавливаем заголовок диалога
-        if (editingPosition == -1) {
-            dialogTitleTextView.setText("Добавить напоминание");
-        } else {
-            dialogTitleTextView.setText("Изменить напоминание");
-        }
-
-        // Если редактируем существующее напоминание, заполняем поля
-        if (existingReminder != null) {
-            titleEditText.setText(existingReminder.getTitle());
-            descriptionEditText.setText(existingReminder.getDescription());
-        }
-
-        // Обновляем отображение даты и времени
-        updateDateTimeDisplay();
-
-        // Обработчики кнопок
         dateButton.setOnClickListener(v -> showDatePickerDialog());
         timeButton.setOnClickListener(v -> showTimePickerDialog());
         cancelButton.setOnClickListener(v -> dismiss());
         saveButton.setOnClickListener(v -> saveReminder());
-
-        builder.setView(view);
-        return builder.create();
     }
 
     private void showDatePickerDialog() {
-        int year = selectedCalendar.get(Calendar.YEAR);
-        int month = selectedCalendar.get(Calendar.MONTH);
-        int day = selectedCalendar.get(Calendar.DAY_OF_MONTH);
+        try {
+            int year = selectedCalendar.get(Calendar.YEAR);
+            int month = selectedCalendar.get(Calendar.MONTH);
+            int day = selectedCalendar.get(Calendar.DAY_OF_MONTH);
 
-        DatePickerDialog datePickerDialog = new DatePickerDialog(
-                requireContext(),
-                (view, selectedYear, selectedMonth, selectedDay) -> {
-                    selectedCalendar.set(Calendar.YEAR, selectedYear);
-                    selectedCalendar.set(Calendar.MONTH, selectedMonth);
-                    selectedCalendar.set(Calendar.DAY_OF_MONTH, selectedDay);
-                    updateDateTimeDisplay();
-                },
-                year, month, day
-        );
+            DatePickerDialog datePickerDialog = new DatePickerDialog(
+                    requireContext(),
+                    (view, selectedYear, selectedMonth, selectedDay) -> {
+                        selectedCalendar.set(Calendar.YEAR, selectedYear);
+                        selectedCalendar.set(Calendar.MONTH, selectedMonth);
+                        selectedCalendar.set(Calendar.DAY_OF_MONTH, selectedDay);
+                        updateDateTimeDisplay();
+                    },
+                    year, month, day
+            );
 
-        datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
-        datePickerDialog.show();
+            datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
+            datePickerDialog.show();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing date picker", e);
+            Toast.makeText(getContext(), "Ошибка выбора даты", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void showTimePickerDialog() {
-        int hour = selectedCalendar.get(Calendar.HOUR_OF_DAY);
-        int minute = selectedCalendar.get(Calendar.MINUTE);
+        try {
+            int hour = selectedCalendar.get(Calendar.HOUR_OF_DAY);
+            int minute = selectedCalendar.get(Calendar.MINUTE);
 
-        TimePickerDialog timePickerDialog = new TimePickerDialog(
-                requireContext(),
-                (view, selectedHour, selectedMinute) -> {
-                    selectedCalendar.set(Calendar.HOUR_OF_DAY, selectedHour);
-                    selectedCalendar.set(Calendar.MINUTE, selectedMinute);
-                    selectedCalendar.set(Calendar.SECOND, 0);
-                    updateDateTimeDisplay();
-                },
-                hour, minute, true
-        );
+            TimePickerDialog timePickerDialog = new TimePickerDialog(
+                    requireContext(),
+                    (view, selectedHour, selectedMinute) -> {
+                        selectedCalendar.set(Calendar.HOUR_OF_DAY, selectedHour);
+                        selectedCalendar.set(Calendar.MINUTE, selectedMinute);
+                        selectedCalendar.set(Calendar.SECOND, 0);
+                        updateDateTimeDisplay();
+                    },
+                    hour, minute, true
+            );
 
-        timePickerDialog.show();
+            timePickerDialog.show();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing time picker", e);
+            Toast.makeText(getContext(), "Ошибка выбора времени", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void updateDateTimeDisplay() {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
-        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+            SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
-        dateTextView.setText(dateFormat.format(selectedCalendar.getTime()));
-        timeTextView.setText(timeFormat.format(selectedCalendar.getTime()));
+            Date currentDate = selectedCalendar.getTime();
+            dateTextView.setText(dateFormat.format(currentDate));
+            timeTextView.setText(timeFormat.format(currentDate));
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error updating date/time display", e);
+        }
     }
 
     private void saveReminder() {
-        String title = titleEditText.getText().toString().trim();
-        String description = descriptionEditText.getText().toString().trim();
+        try {
+            String title = titleEditText.getText().toString().trim();
+            String description = descriptionEditText.getText().toString().trim();
 
-        if (title.isEmpty()) {
-            Toast.makeText(requireContext(), "Введите заголовок", Toast.LENGTH_SHORT).show();
-            return;
+            if (title.isEmpty()) {
+                Toast.makeText(requireContext(), "Введите заголовок", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Date dateTime = selectedCalendar.getTime();
+            Date currentTime = new Date();
+
+            // Проверка, что дата не в прошлом (с допуском в 1 минуту)
+            if (dateTime.before(new Date(currentTime.getTime() - 60000))) {
+                Toast.makeText(requireContext(),
+                        "Выберите будущую дату и время", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Reminder reminder = new Reminder(title, description, dateTime);
+
+            if (listener != null) {
+                if (editingPosition == -1) {
+                    listener.onReminderAdded(reminder);
+                } else {
+                    listener.onReminderUpdated(editingPosition, reminder);
+                }
+            } else {
+                Log.e(TAG, "Listener is null!");
+                Toast.makeText(requireContext(), "Ошибка сохранения", Toast.LENGTH_SHORT).show();
+            }
+
+            dismiss();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving reminder", e);
+            Toast.makeText(requireContext(), "Ошибка сохранения", Toast.LENGTH_SHORT).show();
         }
-
-        Date dateTime = selectedCalendar.getTime();
-
-        if (dateTime.before(new Date())) {
-            Toast.makeText(requireContext(),
-                    "Выберите будущую дату и время", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        Reminder reminder = new Reminder(title, description, dateTime);
-
-        if (editingPosition == -1) {
-            listener.onReminderAdded(reminder);
-        } else {
-            listener.onReminderUpdated(editingPosition, reminder);
-        }
-
-        dismiss();
     }
 }

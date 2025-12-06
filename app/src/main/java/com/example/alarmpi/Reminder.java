@@ -9,7 +9,6 @@ public class Reminder implements Serializable {
     private String description;
     private Date dateTime;
     private boolean isActive;
-    private boolean isSelected;
 
     // Конструктор
     public Reminder(String title, String description, Date dateTime) {
@@ -18,7 +17,6 @@ public class Reminder implements Serializable {
         this.description = description;
         this.dateTime = dateTime;
         this.isActive = true;
-        this.isSelected = false;
     }
 
     // Геттеры и сеттеры
@@ -31,6 +29,4 @@ public class Reminder implements Serializable {
     public void setDateTime(Date dateTime) { this.dateTime = dateTime; }
     public boolean isActive() { return isActive; }
     public void setActive(boolean active) { isActive = active; }
-    public boolean isSelected() { return isSelected; }
-    public void setSelected(boolean selected) { isSelected = selected; }
 }
